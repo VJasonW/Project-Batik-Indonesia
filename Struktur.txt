@@ -1,0 +1,159 @@
+======================================================================
+DOKUMENTASI STRUKTUR PROJECT: PETA INTERAKTIF BATIK INDONESIA
+======================================================================
+
+Dokumen ini berisi penjelasan menyeluruh mengenai struktur project Peta Interaktif Batik Indonesia. Dokumen ini ditujukan agar developer dapat memahami arsitektur project secara mendalam, serta mengetahui bagian mana saja yang harus diubah apabila ingin melakukan modifikasi di masa mendatang.
+
+----------------------------------------------------------------------
+1. GARIS BESAR PROJECT
+----------------------------------------------------------------------
+Project ini adalah sebuah aplikasi web edukasi interaktif bernama "Peta Interaktif Batik Indonesia". Aplikasi ini memetakan berbagai motif batik Nusantara langsung ke wilayah geografis asalnya (34 provinsi di Indonesia).
+
+Fitur Utama:
+- Halaman Utama (Peta 2D Interaktif): Menampilkan peta Indonesia berbasis basemap nyata (2D) dengan overlay batas wilayah 34 provinsi. Saat provinsi di-hover, provinsi tersebut akan menyala dengan warna aksen khas batik daerah tersebut dan menampilkan tooltip informasi ringkas. Saat provinsi diklik, panel samping di sebelah kanan (1/3 lebar layar) akan meluncur masuk menampilkan ringkasan batik di provinsi tersebut.
+- Halaman Detail Provinsi: Menampilkan detail provinsi lengkap dengan galeri kartu motif batik. Jika kartu batik diklik, akan muncul modal berisi gambar besar, sejarah, serta makna & filosofi motif batik tersebut.
+- Admin Panel: Area terproteksi login admin untuk mengelola (CRUD: Create, Read, Update, Delete) motif batik per provinsi, mengunggah gambar batik secara langsung, serta menyesuaikan deskripsi provinsi dan warna aksen visual (accent color) peta menggunakan color picker.
+
+----------------------------------------------------------------------
+2. STACK TEKNOLOGI YANG DIGUNAKAN
+----------------------------------------------------------------------
+Aplikasi ini dibangun menggunakan arsitektur web modern dengan stack teknologi berikut:
+
+A. BACKEND (Server API)
+- Runtime: Node.js
+- Framework: Express.js (dengan TypeScript)
+- Database: SQLite (file database lokal `dev.db` untuk kemudahan portabilitas)
+- ORM: Prisma ORM (mempermudah interaksi database relasional melalui skema terpusat)
+- Autentikasi: JSON Web Token (JWT) untuk memproteksi endpoint admin secara stateless.
+- Enkripsi: bcryptjs untuk hashing password akun admin secara aman.
+- File Upload: Multer untuk mengunggah gambar motif batik ke server backend.
+
+B. FRONTEND (Aplikasi Web & UI)
+- Framework: Next.js (App Router, menggunakan TypeScript)
+- Map Engine: Leaflet (melalui library react-leaflet) untuk merender peta basemap raster 2D dan overlay polygon batas wilayah Indonesia secara responsif dan ringan.
+- Styling: Vanilla CSS (kustom dengan variabel CSS terpusat pada globals.css)
+- HTTP Client: Standard JavaScript Fetch API
+- Aset Geografis: GeoJSON batas wilayah administrasi provinsi Indonesia.
+
+----------------------------------------------------------------------
+3. MENGAPA BACKEND DAN FRONTEND DIPISAH?
+----------------------------------------------------------------------
+Backend (Server API) dan Frontend (Client App) dipisah menjadi dua sub-project mandiri karena alasan-alasan arsitektural berikut:
+
+1. Separation of Concerns (Pemisahan Tanggung Jawab):
+   Frontend hanya berfokus pada pengalaman pengguna (UI/UX), perenderan peta, penanganan event klik/hover, serta navigasi halaman. Sementara Backend hanya berfokus pada data, logika bisnis, interaksi database, enkripsi keamanan, dan penyimpanan file.
+
+2. Skalabilitas & Kemudahan Deployment:
+   Kedua sistem dapat dikembangkan, diperbarui, dan di-deploy secara terpisah. Jika ada perubahan visual pada peta di frontend, backend tidak perlu dimatikan atau di-deploy ulang, begitupun sebaliknya.
+
+3. Reusabilitas API (Headless):
+   Backend menyajikan data dalam format standar JSON via REST API. Jika di masa mendatang ingin dibuat aplikasi mobile (Android/iOS) atau integrasi data batik dengan pihak ketiga, API backend yang sama dapat langsung digunakan tanpa mengubah apa pun.
+
+4. Keamanan Data (Security):
+   Pemisahan ini memastikan bahwa database, file konfigurasi sensitif (seperti kunci privat JWT), dan algoritma enkripsi password disimpan dengan aman di server backend, terisolasi sepenuhnya dari browser client yang rentan terhadap modifikasi pihak luar.
+
+----------------------------------------------------------------------
+4. KEGUNAAN BACKEND DAN FRONTEND
+----------------------------------------------------------------------
+
+A. SECARA GARIS BESAR
+- Backend: Bertindak sebagai "otak" pengolah data. Backend menerima permintaan dari frontend, memverifikasi keamanan (token login admin), mengakses database SQLite melalui Prisma ORM, memproses upload gambar batik ke direktori penyimpanan lokal, dan menyajikan data mentah (JSON) ke frontend.
+- Frontend: Bertindak sebagai "wajah" aplikasi. Frontend memanggil endpoint API backend untuk mengambil data provinsi dan batik, merender visualisasi peta interaktif, menangani input visual admin (seperti pemilihan warna aksen lewat color picker dan pengisian form), serta mengelola sesi login admin di level browser.
+
+B. PENJELASAN PER FILE
+Di bawah ini adalah penjelasan detail mengenai kegunaan setiap file utama di dalam project ini, dibagi berdasarkan folder backend dan frontend:
+
+======================================
+DOKUMENTASI FILE BACKEND
+======================================
+1. backend/prisma/schema.prisma
+   - File utama pendefinisian skema database menggunakan bahasa Prisma. Di dalamnya terdapat model data Province (id, slug, name, capital, region, geoId, shortDescription, accentColor), BatikMotif (id, provinceId, name, imageUrl, shortSummary, history, meaning, originCity), dan AdminUser (id, email, passwordHash) serta konfigurasi SQLite sebagai database provider.
+
+2. backend/prisma/seed.ts
+   - Script inisialisasi awal database (seeding). Ketika dijalankan (`npm run seed`), script ini otomatis mengisi database SQLite dengan data dasar 34 provinsi (termasuk kode geografis, ibu kota, wilayah, dan warna aksen default) serta membuat 1 akun admin bawaan dengan email `admin@batik.id` dan password `admin123`.
+
+3. backend/src/index.ts
+   - File utama (entry point) dari aplikasi server Express.js. Bertugas memuat variabel lingkungan (.env), mengatur middleware global (CORS untuk mengizinkan request dari frontend port 3000, express.json untuk parsing request body, static file server untuk folder `uploads`), mendaftarkan router utama, menangani penanganan error (error-handling middleware), dan menjalankan server di port 3001.
+
+4. backend/src/prisma.ts
+   - Helper sederhana yang menginstansiasi dan mengekspor objek tunggal (singleton) PrismaClient agar koneksi database dapat digunakan kembali di seluruh routing controller tanpa membuat koneksi baru berulang kali.
+
+5. backend/src/middleware/auth.ts
+   - Middleware keamanan Express.js (`authMiddleware`) yang memproteksi rute admin. Middleware ini memeriksa keberadaan header `Authorization: Bearer <token>`, memverifikasi kevalidan JWT menggunakan secret key, dan jika valid, menambahkan informasi admin (`adminId`, `adminEmail`) ke objek request untuk dilanjutkan ke handler berikutnya. Jika tidak valid, server langsung mengembalikan respons 401 Unauthorized.
+
+6. backend/src/routes/auth.ts
+   - Menyediakan endpoint autentikasi admin:
+     * POST `/api/auth/login`: Menerima email dan password, mencocokkan password dengan hash di database menggunakan bcrypt, lalu menghasilkan token JWT jika login berhasil.
+     * GET `/api/auth/me`: Mengembalikan data profil admin yang sedang login berdasarkan verifikasi JWT token.
+
+7. backend/src/routes/provinces.ts
+   - Menyediakan rute data provinsi:
+     * GET `/api/provinces`: Mengambil daftar 34 provinsi lengkap dengan jumlah motif batik yang tersedia di tiap provinsi (untuk menentukan status "berdata").
+     * GET `/api/provinces/:slug`: Mengambil detail lengkap suatu provinsi beserta seluruh motif batik yang berkaitan dengannya (untuk halaman detail provinsi).
+     * GET `/api/provinces/:slug/motifs/summary`: Mengambil daftar ringkas motif batik (hanya ID dan nama, dibatasi maksimal 5 motif) untuk meringankan payload pemuatan tooltip peta.
+     * PUT `/api/provinces/:slug/accent-color`: Endpoint khusus admin untuk mengubah warna aksen visual hover suatu provinsi di peta.
+     * PUT `/api/provinces/:slug`: Endpoint admin untuk memperbarui deskripsi umum budaya batik provinsi serta warna aksennya.
+
+8. backend/src/routes/motifs.ts
+   - Menyediakan rute CRUD data motif batik (terproteksi auth admin untuk penulisan):
+     * GET `/api/motifs/:id`: Mengambil detail satu motif batik berdasarkan ID (untuk modal).
+     * POST `/api/motifs`: Membuat data motif batik baru.
+     * PUT `/api/motifs/:id`: Memperbarui data motif batik yang sudah ada.
+     * DELETE `/api/motifs/:id`: Menghapus motif batik dari database.
+
+9. backend/src/routes/upload.ts
+   - Mengelola fungsionalitas unggah file gambar motif batik. File ini membuat folder penyimpanan lokal `backend/uploads/` jika belum ada, mendefinisikan storage engine Multer untuk memberi nama file unik berbasis timestamp, menetapkan batas ukuran file 5MB, menyaring tipe file gambar yang diizinkan (JPEG, PNG, WebP, GIF), serta mengekspor endpoint POST `/api/upload` yang mengembalikan URL gambar hasil unggahan.
+
+======================================
+DOKUMENTASI FILE FRONTEND
+======================================
+1. frontend/src/app/layout.tsx
+   - Layout utama (root layout) dari Next.js App Router. File ini mendefinisikan struktur dasar HTML (tag `<html>`, `<body>`), menyetel metadata default halaman (judul, deskripsi untuk SEO), serta mengimpor stylesheet global `globals.css` sehingga diterapkan di seluruh halaman website.
+
+2. frontend/src/app/globals.css
+   - Berisi seluruh definisi stylesheet kustom. File ini mendefinisikan variabel/token CSS (warna latar monokrom, warna font, spasi/margin, radius lengkungan), reset CSS dasar, layout-grid, style transisi panel, modal overlay, form admin, serta kustomisasi kelas CSS khusus Leaflet (misal `.leaflet-custom-tooltip` dan spinner pemuatan).
+
+3. frontend/src/app/page.tsx
+   - Endpoint halaman utama (Landing Page) website. Menggunakan fitur dynamic import (`next/dynamic`) dengan opsi `ssr: false` untuk memuat komponen `IndonesiaMap2D`. Hal ini wajib dilakukan karena Leaflet memerlukan objek browser (`window` & `document`) yang tidak tersedia selama rendering sisi server (SSR) di Node.js.
+
+4. frontend/src/app/provinsi/[slug]/page.tsx
+   - Halaman detail publik untuk tiap provinsi (misal: `/provinsi/jawa-tengah`). File ini mengambil slug dari parameter URL, meminta detail data ke backend, menampilkan informasi geografis (nama, ibu kota, wilayah, deskripsi budaya), merender galeri motif batik, dan menyediakan modal interaktif `MotifDetailModal` yang muncul saat kartu motif diklik untuk membaca sejarah serta filosofinya.
+
+5. frontend/src/app/admin/login/page.tsx
+   - Halaman login admin. Menyediakan form input email dan password. File ini menyimpan token JWT hasil login dari backend ke dalam `localStorage` dengan nama `admin_token`, dan mengalihkan admin ke halaman dashboard secara otomatis jika token masih valid.
+
+6. frontend/src/app/admin/dashboard/page.tsx
+   - Halaman utama (dashboard) admin panel. Melakukan pengecekan validitas token JWT di browser. Halaman ini membagi daftar 34 provinsi menjadi 2 bagian tabel ("Pulau Jawa" dan "Provinsi Lainnya") lengkap dengan indikator badge jumlah motif batik masing-masing, serta menyediakan link tombol "Kelola →" untuk masuk ke manajemen data provinsi spesifik.
+
+7. frontend/src/app/admin/provinces/[slug]/page.tsx
+   - Panel manajemen detail provinsi & motif batik khusus admin. File ini berisi dua fitur utama:
+     * Pengaturan Provinsi: Form pengeditan deskripsi budaya batik dan warna aksen peta (menggunakan input color picker HTML5 `<input type="color">` yang terhubung langsung ke backend).
+     * Kelola Motif: Form CRUD motif batik (tambah baru, edit, hapus) lengkap dengan fitur preview gambar serta pengunggahan file gambar baru via input file Multer.
+
+8. frontend/src/components/Icons.tsx
+   - Kumpulan komponen ikon yang diekspor sebagai elemen SVG modular yang dapat disesuaikan ukurannya (misal: IconGlobe, IconUser, IconTrash, IconSpinner, dll) sehingga kode JSX pada halaman visual tetap rapi dan konsisten.
+
+9. frontend/src/components/Map2D/IndonesiaMap2D.tsx
+   - Komponen peta Leaflet 2D interaktif. File ini adalah elemen inti visualisasi spasial:
+     * Mengimpor pustaka `leaflet` secara dinamis.
+     * Mengatur kontainer peta, memusatkan koordinat di Indonesia tengah, dan membatasi pergeseran/zoom peta (bounds).
+     * Menambahkan base map raster bernuansa terang/grayscale dari CartoDB Positron.
+     * Merender batas wilayah 34 provinsi menggunakan data dari file GeoJSON.
+     * Menerapkan event hover pada polygon GeoJSON: provinsi yang berdata berubah warna ke `accentColor` miliknya, kursor diikuti tooltip info, dan kursor keluar mengembalikan warna ke netral (putih/abu-abu).
+     * Menerapkan event klik pada polygon GeoJSON: memanggil API untuk memuat detail provinsi, lalu membuka info-panel samping (1/3 layar kanan) secara slide-in.
+
+10. frontend/src/components/Map3D/ (IndonesiaMap.tsx, ProvinceMesh.tsx, ProvinceTooltip.tsx)
+    - Kumpulan komponen visualisasi peta 3D berbasis Three.js/WebGL (GeoJSON di-extrude menjadi mesh 3D). Komponen-komponen ini merupakan bagian dari arsitektur versi 1.0 yang digantikan oleh peta 2D nyata pada versi 2.0 (sesuai PRD revisi terbaru). File-file ini masih tersimpan di folder ini sebagai arsip/cadangan dan tidak diaktifkan pada rute aktif utama.
+
+11. frontend/src/data/indonesia-provinces.json
+    - File JSON berisi data GeoJSON koordinat batas administrasi provinsi-provinsi di Indonesia. Data ini dibaca oleh Leaflet untuk menggambar garis batas wilayah provinsi yang presisi di atas basemap peta.
+
+12. frontend/src/lib/api.ts
+    - API Wrapper/Helper client. File ini mendefinisikan tipe data (interface) TypeScript untuk data transfer objek (DTO) dan menyusun sekumpulan fungsi pemanggilan AJAX Fetch ke server backend port 3001, lengkap dengan penyematan token autentikasi otomatis untuk request administratif (create, update, delete, upload).
+
+13. frontend/src/lib/geo-utils.ts
+    - Berisi utilitas pemetaan data geografis:
+      * Mapping nama provinsi dari properti mentah GeoJSON ke nama bersih (misal: "PROBANTEN" -> "Banten").
+      * Mapping kode provinsi dari GeoJSON ke URL slug (misal: "33" -> "jawa-tengah").
+      * Fungsi matematika konversi garis bujur/lintang ke koordinat 3D XY yang digunakan oleh peta Three.js versi legacy.
+======================================================================

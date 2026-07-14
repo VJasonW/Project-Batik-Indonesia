@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Province {
+  id               Int          @id @default(autoincrement())
+  slug             String       @unique
+  name             String
+  capital          String?
+  region           String?
+  geoId            String
+  shortDescription String?
+  accentColor      String       @default("#7F8C8D")
+  motifs           BatikMotif[]
+}
+
+model BatikMotif {
+  id           Int      @id @default(autoincrement())
+  provinceId   Int
+  name         String
+  imageUrl     String?
+  shortSummary String?
+  history      String?
+  meaning      String?
+  originCity   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  province     Province @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+}
+
+model AdminUser {
+  id           Int    @id @default(autoincrement())
+  email        String @unique
+  passwordHash String
+}
