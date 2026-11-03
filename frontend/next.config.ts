@@ -14,6 +14,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+    if (!backendUrl) return [];
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl.replace(/\/$/, '')}/api/:path*`,
+      },
+      {
+        source: '/uploads/:path*',
+        destination: `${backendUrl.replace(/\/$/, '')}/uploads/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
