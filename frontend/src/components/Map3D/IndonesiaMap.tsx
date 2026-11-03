@@ -6,7 +6,7 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import ProvinceMesh from './ProvinceMesh';
 import ProvinceTooltip from './ProvinceTooltip';
-import { fetchProvinces, type Province } from '@/lib/api';
+import { fetchProvinces, fetchMotifSummary, type Province } from '@/lib/api';
 import { PROVINCE_KODE_TO_SLUG } from '@/lib/geo-utils';
 import { IconGlobe, IconUser, IconMove, IconZoomIn, IconPointer, IconAlertCircle } from '@/components/Icons';
 
@@ -180,8 +180,7 @@ export default function IndonesiaMap() {
 
     if (slug && provinceMotifs[slug] && provinceMotifs[slug].motifs.length === 0 && provinceMotifs[slug].total > 0) {
       try {
-        const res = await fetch(`http://localhost:3001/api/provinces/${slug}/motifs/summary`);
-        const data = await res.json();
+        const data = await fetchMotifSummary(slug);
         setProvinceMotifs(prev => ({
           ...prev,
           [slug]: { motifs: data.motifs || [], total: data.totalMotifs || 0 },

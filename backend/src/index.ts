@@ -62,11 +62,8 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-// Hanya jalankan listener port jika bukan di environment Vercel serverless
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
 
 export default app;
