@@ -1,17 +1,15 @@
 /**
- * Base URL resolution for Vercel Services & Local Development:
- * - On the server (SSR / Server Component / Route Handler), reads the bound BACKEND_URL service variable.
- * - In the browser, uses relative URL "" so requests to /api/* and /uploads/* are routed to the backend service via top-level rewrites.
- * - Falls back to NEXT_PUBLIC_API_URL or http://localhost:3001 for local development.
+ * Base URL resolution for Server & Browser:
+ * - On the server (SSR / Server Component / Route Handler / Vercel), reads the private BACKEND_URL or API_URL variable.
+ * - In the browser, uses relative URL "" so requests to /api/* and /uploads/* are proxied to the backend via Next.js rewrites or Vercel top-level routing.
+ * - Falls back to http://localhost:3001 for standalone local development.
  */
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') {
-    if (process.env.BACKEND_URL) {
-      return process.env.BACKEND_URL.replace(/\/$/, '');
+    const serverUrl = process.env.BACKEND_URL || process.env.API_URL;
+    if (serverUrl) {
+      return serverUrl.replace(/\/$/, '');
     }
-  }
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
   }
   if (typeof window !== 'undefined') {
     return '';
